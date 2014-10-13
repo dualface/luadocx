@@ -3,7 +3,7 @@
 error_reporting(E_ALL);
 date_default_timezone_set('Asia/Chongqing');
 
-define('LUADOCX_VERSION', '1.3');
+define('LUADOCX_VERSION', '1.4');
 define('DS', DIRECTORY_SEPARATOR);
 
 function help()
@@ -15,18 +15,23 @@ LuaDocX - Generate documents from Lua source files
 
 -   extract tags (module, class, function) from Lua source files. write to JSON file.
 
-    luadocx extract -c config_file_path source_files_dir json_file_dir
+    luadocx extract -c config_file_path source_files_dir json_files_dir
 
 
--   generate offline HTML docments:
+-   generate offline HTML documents:
 
-    luadocx generate -c config_file_path json_file_dir html_files_dir
+    luadocx generate -c config_file_path -t localhtml json_files_dir html_files_dir
+
+
+-   generate Cocos Code IDE auto complete database:
+
+    luadocx generate -c config_file_path -t codeide json_files_dir output_files_dir
 
 
 EOT;
 }
 
-if (!isset($argc) || $argc < 4)
+if (!isset($argc) || $argc < 5)
 {
     help();
     return 1;
@@ -36,6 +41,7 @@ array_shift($argv);
 $params = array(
     'command' => '',
     'configFilePath' => '',
+    'generateType' => 'localhtml',
     'srcFilesDir' => '',
     'destDir' => '',
 );
@@ -44,6 +50,12 @@ while ($arg = array_shift($argv))
     if ($arg == '-c')
     {
         $params['configFilePath'] = array_shift($argv);
+        continue;
+    }
+
+    if ($arg == '-t')
+    {
+        $params['generateType'] = strtolower(array_shift($argv));
         continue;
     }
 
@@ -136,8 +148,22 @@ if ($params['command'] == 'extract')
 }
 else if ($params['command'] == 'generate')
 {
-    $modules = json_decode(file_get_contents($params['srcFilesDir'] . DS . 'structure.json'), true);
-    require_once(__DIR__ . '/inc/LocalHTMLGenerator.php');
-    $generator = new LocalHTMLGenerator($config, $modules);
-    $generator->execute($params['srcFilesDir'], $params['destDir']);
+    switch ($params['generateType'])
+    {
+        case 'localhtml':
+            $modules = json_decode(file_get_contents($params['srcFilesDir'] . DS . 'structure.json'), true);
+            require_once(__DIR__ . '/inc/LocalHTMLGenerator.php');
+            $generator = new LocalHTMLGenerator($config, $modules);
+            return $generator->execute($params['srcFilesDir'], $params['destDir']);
+
+        case 'codeide':
+            $modules = json_decode(file_get_contents($params['srcFilesDir'] . DS . 'modules.json'), true);
+            require_once(__DIR__ . '/inc/CodeIDEGenerator.php');
+            $generator = new CodeIDEGenerator($config, $modules);
+            return $generator->execute($params['srcFilesDir'], $params['destDir']);
+    }
+
+    printf("\nERROR: invalid generate type %s\n", $params['generateType']);
+    help();
+    return 1;
 }
