@@ -7,7 +7,10 @@ if (!empty($functions)):
     $moduleNamePrefix = "{$moduleName}.";
     $moduleNamePrefixLen = strlen($moduleNamePrefix);
     foreach ($functions as $function):
-
+        if (!$function['enable']) 
+        {
+            continue;
+        }
         $parent = $moduleName;
         $functionName = $function['name'];
         if (substr($functionName, 0, $moduleNamePrefixLen) == $moduleNamePrefix)
