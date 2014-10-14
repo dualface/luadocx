@@ -38,10 +38,40 @@ if (!empty($functions)):
 EOT;
 
         foreach ($function['tags'] as $tag):
-            echo <<<EOT
+            $tagName = $tag['name'];
+            $tagValue = $tag['value'];
+
+            if ($tagName == 'return') 
+            {
+                if (!empty($tagValue)) 
+                {
+                    $className = $tagValue;
+                    if (strstr($tagValue, ' ') != false)
+                    {
+                        $className = explode(' ', $tagValue)[0];
+                        if (strstr($className, '|') != false)
+                        {
+                            $className = explode('|', $className)[0];
+                        }
+                    }
+                    $classNameLen = strlen($className);
+                    if ($classNameLen > 1)
+                    {
+                        $tagValue = substr($tagValue, $classNameLen);
+                        echo <<<EOT
+-- @{$tagName} {$className}#{$className} {$tagValue}
+
+EOT;
+                    }
+                }
+            }
+            else
+            {
+                echo <<<EOT
 -- @{$tag['name']} {$tag['value']}
 
 EOT;
+            }
         endforeach;
 
         echo "\n";
