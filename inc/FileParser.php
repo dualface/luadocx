@@ -6,6 +6,8 @@ class FileParser
 {
     private $parseDocBegin      = "/^[ \t]*\\-\\-\\[\\[\\-\\-$/m";
     private $parseDocEnd        = "/^[ \t]*\\]\\]$/m";
+    private $parseDocBeginL     = "/^[ \t]*[-]*[ ]*start[ ][-]*$/m"; //配合ide,增加的-- start --
+    private $parseDocEndL       = "/^[ \t]*[-]*[ ]*end[ ][-]*$/m";   //配合ide,增加的-- end --
     private $parseFunctionArray = array();
 
     private $moduleDocs         = array();
@@ -28,18 +30,39 @@ class FileParser
         $this->functions = array();
 
         $offset = 0;
+        $docEnd;
+        $nRegionComment = 0;
+        $nLineComment = 0;
         $len = strlen($contents);
         while ($offset < $len)
         {
             $matches = array();
-            if (preg_match($this->parseDocBegin, $contents, $matches, PREG_OFFSET_CAPTURE, $offset) == 0)
-            {
+            $matchesL = array();
+            $nRegionComment = 0;
+            $nLineComment = 0;
+
+            $nRegionComment = preg_match($this->parseDocBegin, $contents, $matches, PREG_OFFSET_CAPTURE, $offset);
+            $nLineComment = preg_match($this->parseDocBeginL, $contents, $matchesL, PREG_OFFSET_CAPTURE, $offset);
+
+            if (0 == $nRegionComment && 0 == $nLineComment) {
                 break;
+            } else if (0 == $nRegionComment) {
+                $docEnd = $this->parseDocEndL;
+                $offset = $matchesL[0][1];
+            } else if (0 == $nLineComment) {
+                $docEnd = $this->parseDocEnd;
+                $offset = $matches[0][1];
+            } else if ($matches[0][1] < $matchesL[0][1]) {
+                $docEnd = $this->parseDocEnd;
+                $offset = $matches[0][1];
+            } else {
+                $docEnd = $this->parseDocEndL;
+                $offset = $matchesL[0][1];
             }
-            $offset = $matches[0][1];
+
             // printf("comment begin: %d\n", $offset);
 
-            if (preg_match($this->parseDocEnd, $contents, $matches, PREG_OFFSET_CAPTURE, $offset) == 0)
+            if (preg_match($docEnd, $contents, $matches, PREG_OFFSET_CAPTURE, $offset) == 0)
             {
                 break;
             }
@@ -204,6 +227,8 @@ class FileParser
 
             case 'return':
                 return '-   ' . trim($tag['value']);
+            case 'function':
+                return '';
         }
 
         return $line;
@@ -217,7 +242,10 @@ class FileParser
         foreach ($lines as $line)
         {
             $t = trim($line);
-            if ($t == '--[[--' || $t == ']]') continue;
+            if ('--[[--' == $t || ']]' == $t) continue;
+            if (preg_match("/^[-]* start [-]*$/i", $t)) continue;
+            if (preg_match("/^[-]* end [-]*$/i", $t)) continue;
+            if (preg_match("/^[-]+$/i", $t)) continue;
             if ($tabstop == -1 && $t == '') continue;
 
             $line = str_replace("\t", '    ', $line);
