@@ -10,6 +10,7 @@ class LocalHTMLGenerator extends GeneratorBase
         $templateDir = dirname(__DIR__) . DS . 'template' . DS;
         $templatePath = $templateDir . 'apidoc_module_html.php';
 
+        $config = $this->config;
         $modules = $this->modules;
         $indexFilename = '';
         foreach ($modules as $key => $module)
